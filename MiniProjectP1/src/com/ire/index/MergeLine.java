@@ -1,4 +1,4 @@
-package com.ire.index;
+package src.com.ire.index;
 
 public class MergeLine implements Comparable<MergeLine>{
 	private String word;
