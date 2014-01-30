@@ -28,6 +28,7 @@ public class PageParser {
 	public static Set<String> stopWords;
 	private Stemmer stemmer=new Stemmer();
 	
+	
 	public void parse(WikiPage page) throws IOException{
 		Map<String,Integer> wordCount=new HashMap<String, Integer>(256);
 		String title=page.getTitle().toString().toLowerCase();
@@ -287,7 +288,7 @@ public class PageParser {
 		sameWords.add(mergeLine);
 		currentWord=mergeLine.getWord();
 		
-	}
+	}	
 	
 	public void deleteFiles(List<String> filePaths){
 		for(String filePath:filePaths){
