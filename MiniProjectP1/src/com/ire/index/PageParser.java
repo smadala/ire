@@ -20,39 +20,74 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
 
+import javax.annotation.PostConstruct;
+
 import com.ire.sort.ExternalSort;
 
 public class PageParser {
 	
-	private static Map<String,StringBuffer> allWords=new TreeMap<String,StringBuffer>();
+	public static int totalNumberOfDoc=0;
+	private static Map<String,StringBuilder> allWords=new TreeMap<String,StringBuilder>();
 	public static Set<String> stopWords;
 	private Stemmer stemmer=new Stemmer();
-	
+	enum Fields{
+		TITLE('t',25), BODY('b',1), INFOBOX('i',5), LINKS('l',5), CATAGORY('c',5);
+		private char shortForm;
+		private int weight;
+		private Fields(char shortForm,int weight){
+			this.shortForm=shortForm;
+			this.weight=weight;
+		}
+		public char getShortForm() {
+			return shortForm;
+		}
+		public int getWeight(){
+			return weight;
+		}
+	}
 	
 	public void parse(WikiPage page) throws IOException{
-		Map<String,Integer> wordCount=new HashMap<String, Integer>(256);
-		String title=page.getTitle().toString().toLowerCase();
-		parseText(title, wordCount);
-		String text=page.getText().toString().toLowerCase();
-		parseText(text,wordCount);
+		
+		totalNumberOfDoc++;
+		Map<String,Integer[]> wordCount=new HashMap<String, Integer[]>(256);
+		String aux=page.getTitle().toString().toLowerCase();
+		parseText(aux, wordCount,Fields.TITLE);
+		
+		aux=page.getText().toString().toLowerCase();
+		parseText(aux,wordCount, Fields.BODY);
+		
+		aux=page.getInfoBox().toString().toLowerCase();
+		parseText(aux,wordCount, Fields.INFOBOX);
+		
+		aux=page.getExternalLinks().toString().toLowerCase();
+		parseText(aux,wordCount, Fields.LINKS);
+		
+		aux=page.getCategory().toString().toLowerCase();
+		parseText(aux,wordCount, Fields.CATAGORY);
 		
 		insertToAllWords(page, wordCount);
 	}
 	
-	public void insertToAllWords(WikiPage page, Map<String,Integer> wordCount) throws IOException{
+	public void insertToAllWords(WikiPage page, Map<String,Integer[]> wordCount) throws IOException{
 		
-		Iterator<Map.Entry<String,Integer> > entries=wordCount.entrySet().iterator();
+		Iterator<Map.Entry<String,Integer[]> > entries=wordCount.entrySet().iterator();
 		
-		StringBuffer docList=null;
+		StringBuilder docList=null;
 		while(entries.hasNext()){
-			Map.Entry<String, Integer> entry=entries.next();
+			Map.Entry<String, Integer[]> entry=entries.next();
 			 docList=allWords.get(entry.getKey());
 			 if(docList == null){
-				 docList=new StringBuffer();
-				 docList.append(page.getId() /*+  ParsingConstants.DOC_COUNT_DELIMITER + entry.getValue()*/+ ParsingConstants.DOC_DELIMITER);
+				 docList=new StringBuilder();
+				 docList.append(page.getId())
+				 .append( ParsingConstants.DOC_COUNT_DELIMITER)
+				 .append(getFieldsString(entry.getValue())
+						 .append( ParsingConstants.DOC_DELIMITER));
 				 allWords.put(entry.getKey(), docList);
 			 }else{
-				 docList.append(page.getId()/*+ ParsingConstants.DOC_COUNT_DELIMITER +entry.getValue()*/+ ParsingConstants.DOC_DELIMITER);
+				 docList.append(page.getId())
+				 .append( ParsingConstants.DOC_COUNT_DELIMITER)
+				 .append(getFieldsString(entry.getValue())
+						 .append( ParsingConstants.DOC_DELIMITER));
 			 }
 		//System.out.println(entry.getKey()+ ":"+page.getId()+"-"+entry.getValue());
 		}
@@ -60,7 +95,7 @@ public class PageParser {
 		if( ParsingConstants.NUM_OF_PAGES_PER_CHUNK == ++ParsingConstants.NumOfPagesInMap ){
 			dumpAllWords();
 			ParsingConstants.NumOfPagesInMap=0;
-			allWords = new TreeMap<String,StringBuffer>();
+			allWords = new TreeMap<String,StringBuilder>();
 		}
 	}
 	
@@ -71,9 +106,9 @@ public class PageParser {
 			return;
 		
 		Writer writer=getWriterForDump();
-		Iterator<Entry<String, StringBuffer>> entries = allWords.entrySet().iterator();
+		Iterator<Entry<String, StringBuilder>> entries = allWords.entrySet().iterator();
 		StringBuffer blockOfData;
-		Entry<String,StringBuffer> entry=null;
+		Entry<String,StringBuilder> entry=null;
 		
 		while( entries.hasNext()){
 			 blockOfData=new StringBuffer(2048);
@@ -124,10 +159,10 @@ public class PageParser {
 	
 	
 	
-	public void parseText(String text,Map<String, Integer> wordCount){
+	public void parseText(String text,Map<String, Integer[]> wordCount, Fields type){
 		//String []tokens = text.split("[0-9&|\\]\\[{}\\s=><\\-!();\'\"\\*#$\\,\\\\/]");
 		String []tokens = text.split(ParsingConstants.DOC_PARSIGN_REGEX);
-		Integer count;
+		Integer[] count;
 		for(String token:tokens){
 			
 			if(token.isEmpty()){
@@ -144,15 +179,18 @@ public class PageParser {
 			count=wordCount.get(token);
 			
 			if(count == null){
-				wordCount.put(token, 1);
-			}/*else{
-				wordCount.put(token, count+1);
-			}*/
+				count = new Integer[]{0,0,0,0,0};
+				count[type.ordinal()]++;
+				wordCount.put(token, count);
+			}else{
+				count[type.ordinal()]++;
+				wordCount.put(token, count);
+			}
 		}
 	}
 	
 	public void printPostingList(){
-		Iterator< Map.Entry<String, StringBuffer> > entries=allWords.entrySet().iterator();
+		Iterator< Map.Entry<String, StringBuilder> > entries=allWords.entrySet().iterator();
 		PrintWriter writer=null;
 		
 		try {
@@ -163,7 +201,7 @@ public class PageParser {
 			
 		
 		while(entries.hasNext()){
-			Map.Entry<String,StringBuffer> entry=entries.next();
+			Map.Entry<String,StringBuilder> entry=entries.next();
 			/*if(entry.getValue().length() > 12000 * 6)
 				continue;*/
 			//System.out.println(entry.getKey()+"="+entry.getValue());
@@ -334,5 +372,29 @@ public class PageParser {
 			}
 		}
 		return readers;	
+	}
+	private StringBuilder getFieldsString(Integer[] values){
+		
+		StringBuilder valueString=new StringBuilder();
+		int weight=0;
+		for(Fields field:Fields.values()){
+			if(values[field.ordinal()] == 0)
+				continue;
+			weight = weight + (values[field.ordinal()].intValue() * field.getWeight());
+			valueString.append(field.getShortForm()).append(values[field.ordinal()]);
+		}
+		valueString.append(ParsingConstants.WEIGHT_DELIMITER)
+		.append( ParsingConstants.decimalFormat.format((termFrequence(weight))) );
+		return valueString;
+	}
+	
+	private Double termFrequence(int weight){
+		double result=0;
+		if(weight == 0)
+			return new Double(0);
+		else{
+			result= 1 + Math.log10(weight);
+		}
+		return result;
 	}
 }

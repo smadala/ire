@@ -1,5 +1,6 @@
 package com.ire.index;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +16,7 @@ public class ParsingConstants {
 	public static final String WORD_DELIMITER="=";
 	public static final String DOC_DELIMITER=";";
 	public static final String DOC_COUNT_DELIMITER="-";
+	public static final String WEIGHT_DELIMITER=":";
 	
 	public static final String DOC_PARSIGN_REGEX="[^a-z]";
 	
@@ -29,4 +31,7 @@ public class ParsingConstants {
 	
 	public static int lastSubIndexFile=1000;
 	public static String absoluteIndexFilePath;
+	
+	public static DecimalFormat decimalFormat=new DecimalFormat("#.##");
+	
 }

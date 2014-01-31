@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Date;
 import java.util.HashSet;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -22,7 +23,7 @@ public class WikiParser {
 	 */
 	public static void main(String[] args)  {
 		// TODO Auto-generated method stub
-	//	System.out.println(new Date().toString());
+		System.out.println(new Date().toString());
 		try {
 			buildIndex(args[0],args[1]);
 			
@@ -37,7 +38,7 @@ public class WikiParser {
 		  SAXParser saxParser = saxParserFactory.newSAXParser();
 		  ParsingConstants.indexFileDir=indexDirectory;
 		  saxParser.parse(corpusFile, new WikiSAXHandler());
-		//  System.out.println(new Date().toString() );
+		  System.out.println(new Date().toString() );
 	}
 	public static void loadStopWords() throws IOException{
 		
