@@ -27,6 +27,7 @@ import com.ire.sort.ExternalSort;
 public class PageParser {
 	
 	public static int totalNumberOfDoc=0;
+	
 	private static Map<String,StringBuilder> allWords=new TreeMap<String,StringBuilder>();
 	public static Set<String> stopWords;
 	private Stemmer stemmer=new Stemmer();
@@ -50,8 +51,15 @@ public class PageParser {
 		
 		totalNumberOfDoc++;
 		Map<String,Integer[]> wordCount=new HashMap<String, Integer[]>(256);
-		String aux=page.getTitle().toString().toLowerCase();
-		parseText(aux, wordCount,Fields.TITLE);
+		
+		String aux=page.getTitle().toString();
+		
+		ParsingConstants.titleIndexWriter.write(page.getId());
+		ParsingConstants.titleIndexWriter.write(ParsingConstants.wordDelimiter);
+		ParsingConstants.titleIndexWriter.write(aux);
+		ParsingConstants.titleIndexWriter.write('\n');
+		
+		parseText(aux.toLowerCase(), wordCount,Fields.TITLE);
 		
 		aux=page.getText().toString().toLowerCase();
 		parseText(aux,wordCount, Fields.BODY);
@@ -192,9 +200,9 @@ public class PageParser {
 	public void printPostingList(){
 		Iterator< Map.Entry<String, StringBuilder> > entries=allWords.entrySet().iterator();
 		PrintWriter writer=null;
-		
+		File indexFile=null;
 		try {
-			File indexFile =new File(ParsingConstants.indexFileDir, ParsingConstants.INDEX_FILE_NAME) ;
+			indexFile =new File(ParsingConstants.indexFileDir, "posting_list.txt") ;
 			
 			
 			writer=new PrintWriter(new FileOutputStream(indexFile));
@@ -213,7 +221,7 @@ public class PageParser {
 			//write.print()
 			
 		}
-		ParsingConstants.absoluteIndexFilePath=indexFile.getAbsolutePath();
+		//ParsingConstants.absoluteIndexFilePath=indexFile.getAbsolutePath();
 		
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
@@ -222,30 +230,36 @@ public class PageParser {
 			if(writer != null)
 				writer.close();
 		}
-		ExternalSort.createOffsetsFile(ParsingConstants.absoluteIndexFilePath, ParsingConstants.OFFSETS_FILE);
+		ExternalSort.createOffsetsFile(indexFile.getAbsolutePath(), ParsingConstants.OFFSETS_FILE,100000);
 	}
 	
 	public void mergeSubIndexFiles() throws IOException{
 
-		File indexFile =new File(ParsingConstants.indexFileDir, ParsingConstants.INDEX_FILE_NAME) ;
-		ParsingConstants.absoluteIndexFilePath=indexFile.getAbsolutePath();
+		//File indexFile =new File(ParsingConstants.indexFileDir, ParsingConstants.INDEX_FILE_NAME) ;
+		//ParsingConstants.absoluteIndexFilePath=indexFile.getAbsolutePath();
 		//System.out.println(ParsingConstants.indexFileDir);
 		//System.out.println(ParsingConstants.absoluteIndexFilePath);
-        
+       /* 
 		if(ParsingConstants.subIndexFiles==null || ParsingConstants.subIndexFiles.size() == 0)
 			return;
 		
 		else if(ParsingConstants.subIndexFiles.size() == 1){
 				new File(ParsingConstants.subIndexFiles.get(0)).renameTo(indexFile);
 			return;
-		}
+		}*/
 		
 		List<BufferedReader> readers = getReaderOfSubIndexFiles();
 		boolean reachedEOF[]=new boolean[readers.size()];
 		
 		PriorityQueue<MergeLine> pq=new PriorityQueue<MergeLine>(ParsingConstants.subIndexFiles.size());
-		BufferedWriter indexFileWriter = new BufferedWriter( new FileWriter(indexFile,false));
+		List<BufferedWriter> indexFileWriters = new ArrayList<BufferedWriter>(ParsingConstants. NUM_OF_INDEXFILES);
 		
+		File auxIndexFile=null;
+		for(int i=0;i<ParsingConstants. NUM_OF_INDEXFILES;i++){
+			auxIndexFile=new File(ParsingConstants.indexFileDir,i+ParsingConstants.INDEX_SUFFIX);
+			ParsingConstants.indexFiles.add(auxIndexFile.getAbsolutePath());
+			indexFileWriters.add(new BufferedWriter(new FileWriter(auxIndexFile,false)));
+		}
 		
 		for(int i=0; i<readers.size(); i++){
 			nextMergeLine(pq, readers, i,reachedEOF);
@@ -254,7 +268,9 @@ public class PageParser {
 		List<MergeLine> sameWords=new ArrayList<MergeLine>();;
 		MergeLine mergeLine=null;
 		String currentWord=null;
-		
+		int numOfDocsWordPresent=0;
+		String auxDocIds;
+		String idf;
 		// get least line from PQ and set current word
 		mergeLine = pq.poll();
 		nextMergeLine(pq, readers,mergeLine.getFileNum(),reachedEOF);
@@ -267,9 +283,19 @@ public class PageParser {
 			if(currentWord.equals(mergeLine.getWord())){
 				sameWords.add(mergeLine);
 			}else{  // append all docIds of currentWord
+				numOfDocsWordPresent=0;
+				for(MergeLine sameWord:sameWords){
+					auxDocIds=sameWord.getDocIds();
+					for(int i=0;i<auxDocIds.length();i++){
+						if(';' == auxDocIds.charAt(i))
+							numOfDocsWordPresent++;
+					}
+				}
+				idf=invertedDocumentFreq(numOfDocsWordPresent);
 				StringBuffer wholeLine=new StringBuffer();
 				//Add word
-				wholeLine.append(currentWord).append(ParsingConstants.WORD_DELIMITER);
+				wholeLine.append(currentWord).append(ParsingConstants.WORD_IDF_DELIMITER)
+				.append(idf).append(ParsingConstants.WORD_DELIMITER);
 				//append docIds
 				for(MergeLine sameWord:sameWords){
 					wholeLine.append(sameWord.getDocIds());
@@ -277,7 +303,7 @@ public class PageParser {
 				
 				wholeLine.append("\n");
 				
-				writeData(wholeLine.toString(), indexFileWriter);
+				writeData(wholeLine.toString(), indexFileWriters.get(currentWord.charAt(0) - 'a'));
 				sameWords=new ArrayList<MergeLine>();
 				sameWords.add(mergeLine);
 				currentWord=mergeLine.getWord();
@@ -285,16 +311,28 @@ public class PageParser {
 		   }
 			nextMergeLine(pq, readers, mergeLine.getFileNum(), reachedEOF);
 		}
+		
+		
+		numOfDocsWordPresent=0;
+		for(MergeLine sameWord:sameWords){
+			auxDocIds=sameWord.getDocIds();
+			for(int i=0;i<auxDocIds.length();i++){
+				if(';' == auxDocIds.charAt(i))
+					numOfDocsWordPresent++;
+			}
+		}
+		idf=invertedDocumentFreq(numOfDocsWordPresent);
 		StringBuffer wholeLine=new StringBuffer();
 		//Add word
-		wholeLine.append(currentWord).append(ParsingConstants.WORD_DELIMITER);
+		wholeLine.append(currentWord).append(ParsingConstants.WORD_IDF_DELIMITER)
+		.append(idf).append(ParsingConstants.WORD_DELIMITER);
 		//append docIds
 		for(MergeLine sameWord:sameWords){
 			wholeLine.append(sameWord.getDocIds());
 		}
 		
 		wholeLine.append("\n");
-		writeData(wholeLine.toString(), indexFileWriter);
+		writeData(wholeLine.toString(), indexFileWriters.get(currentWord.charAt(0) - 'a'));
 		//printLineToIndexFile(sameWords, currentWord, indexFileWriter, mergeLine);
 		
 		
@@ -303,8 +341,10 @@ public class PageParser {
 			if(reader != null)
 				reader.close();
 		}
-		if(indexFileWriter != null)
-			indexFileWriter.close();
+		for(BufferedWriter indexFileWriter:indexFileWriters){
+			if(indexFileWriter != null)
+				indexFileWriter.close();
+		}
 		deleteFiles(ParsingConstants.subIndexFiles);
 	}
 	
@@ -381,20 +421,40 @@ public class PageParser {
 			if(values[field.ordinal()] == 0)
 				continue;
 			weight = weight + (values[field.ordinal()].intValue() * field.getWeight());
-			valueString.append(field.getShortForm()).append(values[field.ordinal()]);
+			valueString.append(field.getShortForm());
 		}
 		valueString.append(ParsingConstants.WEIGHT_DELIMITER)
-		.append( ParsingConstants.decimalFormat.format((termFrequence(weight))) );
+		.append( (termFrequence(weight)) );
 		return valueString;
 	}
 	
-	private Double termFrequence(int weight){
+	private String termFrequence(int weight){
 		double result=0;
 		if(weight == 0)
-			return new Double(0);
+			return "0";
 		else{
 			result= 1 + Math.log10(weight);
 		}
-		return result;
+		return ParsingConstants.decimalFormat.format(result);
 	}
+	
+	private String invertedDocumentFreq(int numOfDocsWordPresent){
+		double result=0;
+		if(numOfDocsWordPresent == 0)
+			return "0";
+		else{
+			result=  Math.log10( ((double)PageParser.totalNumberOfDoc) / numOfDocsWordPresent);
+		}
+		return ParsingConstants.decimalFormat.format(result);
+	}
+	
+	private int countChar(String s,char ch){
+		int times=0;
+		for(int i=0;i<s.length();i++){
+			if(ch == s.charAt(i))
+				times++;
+		}
+		return times;
+	}
+	
 }

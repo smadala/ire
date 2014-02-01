@@ -1,4 +1,7 @@
 package com.ire.index;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,6 +47,16 @@ public class WikiSAXHandler extends DefaultHandler{
 
 	@Override
 	public void startDocument() throws SAXException {
+		
+		//Titles File
+		ParsingConstants.titleFile=new File(ParsingConstants.indexFileDir, 
+				ParsingConstants.TITLES_FILE_PREFIX+ParsingConstants.INDEX_SUFFIX);
+		try {
+			ParsingConstants.titleIndexWriter=new BufferedWriter(new FileWriter(ParsingConstants.titleFile));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		//System.out.println("Start of Doc...");
 	}
 
@@ -55,9 +68,16 @@ public class WikiSAXHandler extends DefaultHandler{
 		try {
 			pageParser.dumpAllWords();
 			pageParser.mergeSubIndexFiles();
-			ExternalSort.createOffsetsFile(ParsingConstants.absoluteIndexFilePath, ParsingConstants.indexFileDir);
+			ParsingConstants.indexFiles.add(ParsingConstants.titleFile.getAbsolutePath());
+			for(int i=0;i<ParsingConstants.NUM_OF_INDEXFILES+1;i++){
+				ExternalSort.createOffsetsFile(ParsingConstants.indexFiles.get(i), ParsingConstants.indexFileDir,i);
+			}
+			/*ExternalSort.createOffsetsFile(ParsingConstants.titleFile.getAbsolutePath(),
+					ParsingConstants.indexFileDir,ParsingConstants.TITLES_FILE_PREFIX);*/
+			ParsingConstants.titleIndexWriter.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
+			
 			e.printStackTrace();
 		}
 	}

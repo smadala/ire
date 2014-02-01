@@ -1,5 +1,7 @@
 package com.ire.index;
 
+import java.io.BufferedWriter;
+import java.io.File;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,9 +14,15 @@ public class ParsingConstants {
 	public static final String STOP_WORD_FILE="stopwords.txt";
 	public static final String STOP_WORD_DELIMITER=",";
 	
-	public static final String INDEX_FILE_NAME="index.txt";
+	
+	//word#idf=docid-freq:weight;
+//	public static final String INDEX_FILE_NAME="index.txt";
+	public static final int NUM_OF_INDEXFILES=26;
+	public static final List<String> indexFiles=new ArrayList<String>(NUM_OF_INDEXFILES);
 	public static final String WORD_DELIMITER="=";
-	public static final String DOC_DELIMITER=";";
+	public static final char  CHAR_WORD_DELIMITER='=';
+	public static final char WORD_IDF_DELIMITER='#';
+	public static final String DOC_DELIMITER=";";  // hardcoded at 2 places in PageParser for perf if(';' == s.charAt(i)) 
 	public static final String DOC_COUNT_DELIMITER="-";
 	public static final String WEIGHT_DELIMITER=":";
 	
@@ -25,13 +33,25 @@ public class ParsingConstants {
 	public static int NumOfPagesInMap=0;
 	public static final int NUM_OF_PAGES_PER_CHUNK=2000;
 	
+	
+	
 	public static String indexFileDir;
 	
 	public static List<String> subIndexFiles=new ArrayList<String>();
 	
 	public static int lastSubIndexFile=1000;
-	public static String absoluteIndexFilePath;
+//	public static String absoluteIndexFilePath;
 	
 	public static DecimalFormat decimalFormat=new DecimalFormat("#.##");
 	
+	public static final String OFFSET_SUFFIX="_offsets.txt";
+	public static final String SECONDRY_SUFFIX="_secondry.txt";
+	public static final String INDEX_SUFFIX="_index.txt";
+	
+	public static final int SECONDRY_INDEX_GAP=512;
+	public static String wordDelimiter = ParsingConstants.WORD_IDF_DELIMITER+"";
+	
+	public static final int TITLES_FILE_PREFIX=26;
+	public static File titleFile;
+	public static BufferedWriter titleIndexWriter;
 }
