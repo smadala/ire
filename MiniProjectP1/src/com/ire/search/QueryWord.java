@@ -5,7 +5,7 @@ import java.util.Comparator;
 public class QueryWord {
 	
 	private String word;
-	private Double idf;
+	private double idf;
 	private String docIds;
 	
 	public String getWord() {

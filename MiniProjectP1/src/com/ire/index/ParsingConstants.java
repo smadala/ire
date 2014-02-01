@@ -22,9 +22,13 @@ public class ParsingConstants {
 	public static final String WORD_DELIMITER="=";
 	public static final char  CHAR_WORD_DELIMITER='=';
 	public static final char WORD_IDF_DELIMITER='#';
-	public static final String DOC_DELIMITER=";";  // hardcoded at 2 places in PageParser for perf if(';' == s.charAt(i)) 
+	public static String wordDelimiter = "#";
+	public static final String DOC_DELIMITER=";";  // hardcoded at 2 places in PageParser for perf if(';' == s.charAt(i))
+	public static final char CHAR_DOC_DELIMITER=';';
 	public static final String DOC_COUNT_DELIMITER="-";
+	public static final char CHAR_DOC_COUNT_DELIMITER='-';
 	public static final String WEIGHT_DELIMITER=":";
+	public static final char CHAR_WEIGHT_DELIMITER=':';
 	
 	public static final String DOC_PARSIGN_REGEX="[^a-z]";
 	
@@ -49,9 +53,11 @@ public class ParsingConstants {
 	public static final String INDEX_SUFFIX="_index.txt";
 	
 	public static final int SECONDRY_INDEX_GAP=512;
-	public static String wordDelimiter = ParsingConstants.WORD_IDF_DELIMITER+"";
+	
 	
 	public static final int TITLES_FILE_PREFIX=26;
 	public static File titleFile;
 	public static BufferedWriter titleIndexWriter;
+	
+	public static int MIN_RESULTSET=10;
 }

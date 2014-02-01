@@ -184,9 +184,34 @@ public class Search {
 			queryWord.setDocIds(postingList.substring(idfEndPos+1)); // +1 for ignore = 
 		}
 		Collections.sort(queryWords, QueryWord.SORT_BY_IDF);
-		for(QueryWord qWord:queryWords){
-			
+		
+		List<DocDetails> releventDocs=getDocDetails(queryWords.get(0).getDocIds()),tempRelevenceDocs;
+		
+		List<DocDetails> tempDocs=new ArrayList<>();
+		for(int i=1;i<queryWords.size();i++){
+			if(releventDocs.size() <= ParsingConstants.MIN_RESULTSET)
+				break;
+			tempDocs=getDocDetails(queryWords.get(i).getDocIds());
+			tempRelevenceDocs=DocDetails.intersection(releventDocs, tempDocs);
+			if(tempRelevenceDocs.size() <= ParsingConstants.MIN_RESULTSET)
+				break;
+			releventDocs=tempRelevenceDocs;
 		}
+	}
+	
+	//word#idf=docid-freq:weight;
+	public static List<DocDetails> getDocDetails(String docIds){
+		List<DocDetails> docDetails=new ArrayList<>();
+		int  len=docIds.length(), endIndex,beginIndex=0;
+		
+		while(true){
+			endIndex=docIds.indexOf(ParsingConstants.CHAR_DOC_DELIMITER,beginIndex);
+			docDetails.add(new DocDetails(docIds.substring(beginIndex,endIndex)));
+			if(endIndex == len-1)
+				break;
+			beginIndex=endIndex+1;
+		}
+		return docDetails;
 	}
 	public static void displayWordLine(String line){
 		

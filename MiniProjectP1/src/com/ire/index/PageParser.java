@@ -31,19 +31,24 @@ public class PageParser {
 	private static Map<String,StringBuilder> allWords=new TreeMap<String,StringBuilder>();
 	public static Set<String> stopWords;
 	private Stemmer stemmer=new Stemmer();
-	enum Fields{
-		TITLE('t',25), BODY('b',1), INFOBOX('i',5), LINKS('l',5), CATAGORY('c',5);
+	public static enum Fields{
+		TITLE('t',25,4), INFOBOX('i',5,3), LINKS('l',5,2), CATAGORY('c',5,1), BODY('b',1,0);
 		private char shortForm;
 		private int weight;
-		private Fields(char shortForm,int weight){
+		private int setbit;
+		private Fields(char shortForm,int weight,int setbit){
 			this.shortForm=shortForm;
 			this.weight=weight;
+			this.setbit= 1 << setbit; 
 		}
 		public char getShortForm() {
 			return shortForm;
 		}
 		public int getWeight(){
 			return weight;
+		}
+		public int getSetbit(){
+			return setbit;
 		}
 	}
 	
@@ -89,13 +94,13 @@ public class PageParser {
 				 docList.append(page.getId())
 				 .append( ParsingConstants.DOC_COUNT_DELIMITER)
 				 .append(getFieldsString(entry.getValue())
-						 .append( ParsingConstants.DOC_DELIMITER));
+						 .append( ParsingConstants.CHAR_DOC_DELIMITER));
 				 allWords.put(entry.getKey(), docList);
 			 }else{
 				 docList.append(page.getId())
 				 .append( ParsingConstants.DOC_COUNT_DELIMITER)
 				 .append(getFieldsString(entry.getValue())
-						 .append( ParsingConstants.DOC_DELIMITER));
+						 .append( ParsingConstants.CHAR_DOC_DELIMITER));
 			 }
 		//System.out.println(entry.getKey()+ ":"+page.getId()+"-"+entry.getValue());
 		}
@@ -417,13 +422,15 @@ public class PageParser {
 		
 		StringBuilder valueString=new StringBuilder();
 		int weight=0;
+		int setBit=0;
 		for(Fields field:Fields.values()){
 			if(values[field.ordinal()] == 0)
 				continue;
 			weight = weight + (values[field.ordinal()].intValue() * field.getWeight());
-			valueString.append(field.getShortForm());
+			setBit = setBit | field.getSetbit();
+			//valueString.append(field.getShortForm());
 		}
-		valueString.append(ParsingConstants.WEIGHT_DELIMITER)
+		valueString.append(setBit).append(ParsingConstants.WEIGHT_DELIMITER)
 		.append( (termFrequence(weight)) );
 		return valueString;
 	}
