@@ -2,6 +2,7 @@ package com.ire.index;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +36,9 @@ public class ParsingConstants {
 	public static final String OFFSETS_FILE="offsets.txt";
 	public static int pageNumber=0;
 	public static int NumOfPagesInMap=0;
-	public static final int NUM_OF_PAGES_PER_CHUNK=2000;
+	public static final int NUM_OF_PAGES_PER_CHUNK=15000;
+	
+	public static final int MAX_MERGE_LINE_LENGTH=100000;
 	
 	
 	
@@ -52,7 +55,7 @@ public class ParsingConstants {
 	public static final String SECONDRY_SUFFIX="_secondry.txt";
 	public static final String INDEX_SUFFIX="_index.txt";
 	
-	public static final int SECONDRY_INDEX_GAP=512;
+	public static final int SECONDRY_INDEX_GAP=50;
 	
 	
 	public static final int TITLES_FILE_PREFIX=26;
@@ -60,4 +63,12 @@ public class ParsingConstants {
 	public static BufferedWriter titleIndexWriter;
 	
 	public static int MIN_RESULTSET=10;
+	public static long startTime;
+	public static long dump=0;
+	public static long indexCount=0;
+	public static long lastDump;
+	public static Writer prevWriter=null;
+	
+	public static BufferedWriter dynamicStopwordsWriter;
+	public static String ALL_WORDS_FILE="allWords.txt";
 }

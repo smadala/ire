@@ -24,6 +24,8 @@ public class WikiParser {
 	public static void main(String[] args)  {
 		// TODO Auto-generated method stub
 		System.out.println(new Date().toString());
+		ParsingConstants.startTime=System.currentTimeMillis();
+		ParsingConstants.lastDump=System.currentTimeMillis();
 		try {
 			buildIndex(args[0],args[1]);
 			

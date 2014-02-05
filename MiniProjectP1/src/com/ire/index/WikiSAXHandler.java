@@ -51,6 +51,8 @@ public class WikiSAXHandler extends DefaultHandler{
 		//Titles File
 		ParsingConstants.titleFile=new File(ParsingConstants.indexFileDir, 
 				ParsingConstants.TITLES_FILE_PREFIX+ParsingConstants.INDEX_SUFFIX);
+		ParsingConstants.titleFile=new File(ParsingConstants.indexFileDir, 
+				ParsingConstants.TITLES_FILE_PREFIX+ParsingConstants.INDEX_SUFFIX);
 		try {
 			ParsingConstants.titleIndexWriter=new BufferedWriter(new FileWriter(ParsingConstants.titleFile));
 		} catch (IOException e) {
@@ -247,6 +249,7 @@ public class WikiSAXHandler extends DefaultHandler{
 			case EXTERNAL_LINKS: page.getExternalLinks().append(ch,start,length);
 							break;
 		}
+		
 	}
 	
 	private boolean isMatch(char ch[], int start, int length ,int firstCharPos, String  pattern){

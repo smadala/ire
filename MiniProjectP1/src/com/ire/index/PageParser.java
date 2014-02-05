@@ -19,6 +19,7 @@ import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
 
@@ -32,7 +33,7 @@ public class PageParser {
 	public static Set<String> stopWords;
 	private Stemmer stemmer=new Stemmer();
 	public static enum Fields{
-		TITLE('t',25,4), INFOBOX('i',5,3), LINKS('l',5,2), CATAGORY('c',5,1), BODY('b',1,0);
+		TITLE('t',100,4), INFOBOX('i',5,3), LINKS('l',5,2), CATAGORY('c',10,1), BODY('b',1,0);
 		private char shortForm;
 		private int weight;
 		private int setbit;
@@ -50,11 +51,22 @@ public class PageParser {
 		public int getSetbit(){
 			return setbit;
 		}
+		public static Fields getField(Character shortForm){
+			switch(shortForm){
+			case 't': return TITLE;
+			case 'i' : return INFOBOX;
+			case 'l' :return LINKS;
+			case 'c' :return CATAGORY;
+			case 'b' :return BODY;
+			}
+			return null;
+		}
 	}
 	
 	public void parse(WikiPage page) throws IOException{
 		
 		totalNumberOfDoc++;
+		page.setId(String.valueOf(totalNumberOfDoc));
 		Map<String,Integer[]> wordCount=new HashMap<String, Integer[]>(256);
 		
 		String aux=page.getTitle().toString();
@@ -106,9 +118,16 @@ public class PageParser {
 		}
 		
 		if( ParsingConstants.NUM_OF_PAGES_PER_CHUNK == ++ParsingConstants.NumOfPagesInMap ){
+			System.out.println("dump number "+ ++ParsingConstants.dump
+					+" last dump dur:(s) " +TimeUnit.SECONDS.
+					convert(System.currentTimeMillis()- ParsingConstants.lastDump, TimeUnit.MILLISECONDS)
+					+" total time(m) " + TimeUnit.MINUTES.
+					convert(System.currentTimeMillis()- ParsingConstants.startTime, TimeUnit.MILLISECONDS));
+			ParsingConstants.lastDump=System.currentTimeMillis();
 			dumpAllWords();
 			ParsingConstants.NumOfPagesInMap=0;
 			allWords = new TreeMap<String,StringBuilder>();
+			System.gc();
 		}
 	}
 	
@@ -150,6 +169,15 @@ public class PageParser {
 	
 	public void writeData(String blockOfData, Writer writer ){
 		try {
+			if(ParsingConstants.prevWriter != writer){
+				ParsingConstants.prevWriter=writer;
+				System.out.println("file number "+ ++ParsingConstants.indexCount
+						+" last file dur:(s) " +TimeUnit.SECONDS.
+						convert(System.currentTimeMillis()- ParsingConstants.lastDump, TimeUnit.MILLISECONDS)
+						+" total time(m) " + TimeUnit.MINUTES.
+						convert(System.currentTimeMillis()- ParsingConstants.startTime, TimeUnit.MILLISECONDS));
+				ParsingConstants.lastDump=System.currentTimeMillis();
+			}
 			writer.write(blockOfData);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -258,7 +286,7 @@ public class PageParser {
 		
 		PriorityQueue<MergeLine> pq=new PriorityQueue<MergeLine>(ParsingConstants.subIndexFiles.size());
 		List<BufferedWriter> indexFileWriters = new ArrayList<BufferedWriter>(ParsingConstants. NUM_OF_INDEXFILES);
-		
+		BufferedWriter allWordsWriter=new BufferedWriter(new FileWriter(new File(ParsingConstants.indexFileDir,ParsingConstants.ALL_WORDS_FILE)));
 		File auxIndexFile=null;
 		for(int i=0;i<ParsingConstants. NUM_OF_INDEXFILES;i++){
 			auxIndexFile=new File(ParsingConstants.indexFileDir,i+ParsingConstants.INDEX_SUFFIX);
@@ -280,6 +308,7 @@ public class PageParser {
 		mergeLine = pq.poll();
 		nextMergeLine(pq, readers,mergeLine.getFileNum(),reachedEOF);
 		currentWord=mergeLine.getWord();
+		Writer currentWriter=indexFileWriters.get(currentWord.charAt(0) - 'a');
 		sameWords.add(mergeLine);
 		
 		while(!pq.isEmpty()){
@@ -288,14 +317,17 @@ public class PageParser {
 			if(currentWord.equals(mergeLine.getWord())){
 				sameWords.add(mergeLine);
 			}else{  // append all docIds of currentWord
+				currentWriter=indexFileWriters.get(currentWord.charAt(0) - 'a');
+				//cal IDF
 				numOfDocsWordPresent=0;
 				for(MergeLine sameWord:sameWords){
 					auxDocIds=sameWord.getDocIds();
 					for(int i=0;i<auxDocIds.length();i++){
-						if(';' == auxDocIds.charAt(i))
+						if(ParsingConstants.CHAR_DOC_DELIMITER == auxDocIds.charAt(i))
 							numOfDocsWordPresent++;
 					}
 				}
+				allWordsWriter.write(currentWord+ParsingConstants.WORD_IDF_DELIMITER+numOfDocsWordPresent+"\n");
 				idf=invertedDocumentFreq(numOfDocsWordPresent);
 				StringBuffer wholeLine=new StringBuffer();
 				//Add word
@@ -304,11 +336,15 @@ public class PageParser {
 				//append docIds
 				for(MergeLine sameWord:sameWords){
 					wholeLine.append(sameWord.getDocIds());
+					if(wholeLine.length()>ParsingConstants.MAX_MERGE_LINE_LENGTH){
+						writeData(wholeLine.toString(), currentWriter);
+						wholeLine=new StringBuffer();
+					}
 				}
 				
 				wholeLine.append("\n");
 				
-				writeData(wholeLine.toString(), indexFileWriters.get(currentWord.charAt(0) - 'a'));
+				writeData(wholeLine.toString(), currentWriter);
 				sameWords=new ArrayList<MergeLine>();
 				sameWords.add(mergeLine);
 				currentWord=mergeLine.getWord();
@@ -326,18 +362,24 @@ public class PageParser {
 					numOfDocsWordPresent++;
 			}
 		}
+		allWordsWriter.write(currentWord+ParsingConstants.WORD_IDF_DELIMITER+numOfDocsWordPresent+"\n");
 		idf=invertedDocumentFreq(numOfDocsWordPresent);
 		StringBuffer wholeLine=new StringBuffer();
 		//Add word
+		currentWriter=indexFileWriters.get(currentWord.charAt(0) - 'a');
 		wholeLine.append(currentWord).append(ParsingConstants.WORD_IDF_DELIMITER)
 		.append(idf).append(ParsingConstants.WORD_DELIMITER);
 		//append docIds
 		for(MergeLine sameWord:sameWords){
 			wholeLine.append(sameWord.getDocIds());
+			if(wholeLine.length()>ParsingConstants.MAX_MERGE_LINE_LENGTH){
+				writeData(wholeLine.toString(), currentWriter);
+				wholeLine=new StringBuffer();
+			}
 		}
 		
 		wholeLine.append("\n");
-		writeData(wholeLine.toString(), indexFileWriters.get(currentWord.charAt(0) - 'a'));
+		writeData(wholeLine.toString(), currentWriter);
 		//printLineToIndexFile(sameWords, currentWord, indexFileWriter, mergeLine);
 		
 		
@@ -350,6 +392,8 @@ public class PageParser {
 			if(indexFileWriter != null)
 				indexFileWriter.close();
 		}
+		if(allWordsWriter!=null)
+			allWordsWriter.close();
 		deleteFiles(ParsingConstants.subIndexFiles);
 	}
 	
