@@ -43,7 +43,12 @@ public class MergeLine implements Comparable<MergeLine>{
 	//	return word.compareTo(o.getWord());
 		diff = word.compareTo(o.getWord());
 		if( diff == 0){
-			return docIds.compareTo(o.getDocIds());
+			int end1,end2, docId1, docId2;
+			end1=docIds.indexOf(ParsingConstants.CHAR_DOC_COUNT_DELIMITER);
+			docId1=Integer.parseInt(docIds.substring(0, end1));
+			end2=o.getDocIds().indexOf(ParsingConstants.CHAR_DOC_COUNT_DELIMITER);
+			docId2=Integer.parseInt(o.getDocIds().substring(0, end2));
+			return docId1>docId2?1:-1;
 		}
 		return diff;
 	}

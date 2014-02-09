@@ -68,6 +68,7 @@ public class WikiSAXHandler extends DefaultHandler{
 		//System.out.println("End of Doc...");
 		
 		try {
+			ParsingConstants.titleIndexWriter.close();
 			pageParser.dumpAllWords();
 			pageParser.mergeSubIndexFiles();
 			ParsingConstants.indexFiles.add(ParsingConstants.titleFile.getAbsolutePath());
@@ -76,7 +77,7 @@ public class WikiSAXHandler extends DefaultHandler{
 			}
 			/*ExternalSort.createOffsetsFile(ParsingConstants.titleFile.getAbsolutePath(),
 					ParsingConstants.indexFileDir,ParsingConstants.TITLES_FILE_PREFIX);*/
-			ParsingConstants.titleIndexWriter.close();
+			//ParsingConstants.titleIndexWriter.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			

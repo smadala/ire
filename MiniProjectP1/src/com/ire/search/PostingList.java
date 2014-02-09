@@ -19,7 +19,7 @@ public class PostingList {
 		
 		while(true){
 			endIndex=docIds.indexOf(ParsingConstants.CHAR_DOC_DELIMITER,beginIndex);
-			docDetails.add(new DocDetails(docIds.substring(beginIndex,endIndex)));
+			//docDetails.add(new DocDetails(docIds.substring(beginIndex,endIndex)));
 			if(endIndex == len-1)
 				break;
 			beginIndex=endIndex+1;

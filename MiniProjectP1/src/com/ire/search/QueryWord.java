@@ -13,7 +13,7 @@ public class QueryWord {
 	private String word;
 	private Fields field;
 	private double idf;
-	List<DocDetails> docDetails;
+	public List<DocDetails> docDetails;
 	
 	public String getRawPostingList() {
 		return rawPostingList;
@@ -66,6 +66,7 @@ public class QueryWord {
 	}
 	public List<DocDetails> makeDocDetails(){
 		docDetails=new ArrayList<>();
+		DocDetails doc=null;
 		int  len=rawPostingList.length(), endIndex,beginIndex=0;
 		beginIndex=rawPostingList.indexOf(ParsingConstants.CHAR_WORD_DELIMITER);
 		beginIndex++;
@@ -73,7 +74,14 @@ public class QueryWord {
 			endIndex=rawPostingList.indexOf(ParsingConstants.CHAR_DOC_DELIMITER,beginIndex);
 			if(endIndex < 0)
 				break;
-			docDetails.add(new DocDetails(rawPostingList.substring(beginIndex,endIndex)));
+			doc=new DocDetails(rawPostingList.substring(beginIndex,endIndex));
+        	 
+			if(field != null && (doc.getFieldType()&field.getSetbit()) != field.getSetbit()){
+				beginIndex=endIndex+1;
+				continue;
+			}
+		//	System.out.println(doc.getDocId());
+			docDetails.add(doc);
 			beginIndex=endIndex+1;
 		}
 		return docDetails;
@@ -81,6 +89,13 @@ public class QueryWord {
 	
 	public void sortDocDetailsByTf(){
 		Collections.sort(docDetails, SORT_BY_TF);
+		/*int c=0;
+		for(DocDetails doc:docDetails){
+			
+			System.out.println( doc.getDocId() +"  "+doc.getFieldType() +" "+doc.getTf());
+			if(c++ == 10)
+				break;
+		}*/
 	}
 	
 	public static CompareByTf SORT_BY_TF=new CompareByTf();
@@ -89,8 +104,11 @@ public class QueryWord {
 		@Override
 		public int compare(DocDetails o1, DocDetails o2) {
 			// TODO Auto-generated method stub
-			return Double.compare(o1.getTf(), o2.getTf());
+			return Double.compare(o1.getTf(), o2.getTf()) * -1;
+			/*double diff=o1.getTf()-o2.getTf();
+			if(diff > 0) return 1;
+			else if (diff < 0) return -1;
+			return 0;*/
 		}
-		
 	}
 }

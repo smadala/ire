@@ -12,6 +12,10 @@ public class DocDetails {
 	private double tf;
 	private List<DocDetails> resultDocs;
 	
+	//word#idf=docid-freq:weight;
+	public String toString(){
+		return docId + "-" + fieldType + ":" + tf +";";
+	}
 	public DocDetails(String details){
 		//word#idf=docid-freq:weight;
 		 int startIndex,endIndex;
@@ -68,22 +72,29 @@ public class DocDetails {
 			return common;
 		}
 		
-		int len1=l1.size(),len2=l2.size(),diff;
+		int len1=l1.size(),len2=l2.size(),diff,docId1,docId2;
 		
 		for(int i=0,j=0;i<len1 && j<len2; ){
 			diff=l1.get(i).getDocId().compareTo(l2.get(j).getDocId());
+			/*if(l1.get(i).getDocId().equals("38833")){
+				System.out.print(l1.get(i));
+			}*/
+			/*docId1=Integer.parseInt(l1.get(i).getDocId());
+			docId2=Integer.parseInt(l2.get(j).getDocId());
+			diff=docId1-docId2;*/
 			if(diff > 0)
 				j++;
 			else if(diff < 0)
 				i++;
 			else{
 				if( field == null){
-					l1.get(i).getResultDocs().add(l2.get(i));
+					l1.get(i).getResultDocs().add(l2.get(j));
 					common.add(l1.get(i));
+					
 				}
 				//field match
-				else if( (field.getSetbit() & l2.get(i).getFieldType()) == field.getSetbit() ){
-					l1.get(i).getResultDocs().add(l2.get(i));
+				else if( (field.getSetbit() & l2.get(j).getFieldType()) == field.getSetbit() ){
+					l1.get(i).getResultDocs().add(l2.get(j));
 					common.add(l1.get(i));
 				}
 				i++;

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -15,6 +16,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import com.ire.index.PageParser;
 import com.ire.index.PageParser.Fields;
 import com.ire.index.ParsingConstants;
 import com.ire.index.Stemmer;
@@ -90,7 +92,7 @@ public class Search {
 		final String indexFolder=args[0];
 		loadSecondryIndexes(indexFolder);
 		WikiParser.loadStopWords();
-		final String queryFile=args[1];
+		//final String queryFile=args[1];
 		String line=null;
 		
 		
@@ -99,71 +101,117 @@ public class Search {
 		/*BufferedReader reader=new BufferedReader(new FileReader(new File(queryFile)));
 		int numOfQueries=Integer.parseInt(reader.nextLine());*/
 		Scanner reader=new Scanner(System.in);
+		System.out.println("enter num of queries...");
 		int numOfQueries=Integer.parseInt(reader.nextLine());
 	//	String[] queryWords= new String[numOfQueries];
 		
 
 		for(int i=0;  i < numOfQueries;i++){
+			System.out.println("enter query....");
 			List<QueryWord> queryWords=new ArrayList<>();
 			QueryWord queryWord;
 		//	line = reader.readLine();
 			line = reader.nextLine();
+			start = System.currentTimeMillis();
 			
 			if(line != null){
 				tokens =line.toLowerCase().split("\\s+");
 				for(String word:tokens){
 					queryWord=new QueryWord();
 					if( word.length()>2 && word.charAt(1) == ':'){
+						
 						queryWord.setField(Fields.getField(word.charAt(0)));
+						if(PageParser.stopWords.contains(word.substring(2)))
+							continue;
 						queryWord.setWord(stemmer.stemWord(word.substring(2)));
 					}else{
+						if(PageParser.stopWords.contains(word))
+							continue;
 						queryWord.setWord(stemmer.stemWord(word));
 					}
 					queryWords.add(queryWord);
 				}
 			}
-			
-			getPostingList(queryWords);
+			System.out.println("getting posting list...");
+			queryWords=getPostingList(queryWords);
+			System.out.println("got posting list...");
 			for(QueryWord qWord:queryWords){
 				qWord.makeDocDetails();
 			}
+			
+			Set<String> shownResults=new HashSet<>(); //to avoid duplicates
+			
 			if(queryWords.size() == 1){
-				List<String> docIds=new ArrayList<>();
+				/*List<String> docIds=new ArrayList<>();
 				queryWord=queryWords.get(0);
-				if(queryWord.getField() == null || true){
-					queryWord.sortDocDetailsByTf();
-				}
+				queryWord.sortDocDetailsByTf();
 				for(int index=0;index<ParsingConstants.MIN_RESULTSET && index < queryWord.getDocDetails().size() ;index++){
-					docIds.add(queryWord.getDocDetails().get(i).getDocId());
+					docIds.add(queryWord.getDocDetails().get(index).getDocId());
 				}
-				displayTitles(docIds);
+				displayTitles(docIds);*/
+				queryWord=queryWords.get(0);
+				displayTitleByTf(queryWord, ParsingConstants.MIN_RESULTSET , shownResults);
+				System.out.println(System.currentTimeMillis()-start+ "ms");
+				continue;
 			}
 			Collections.sort(queryWords, QueryWord.SORT_BY_IDF);
 			
 			List<List<DocDetails>> andDocDetails;
-			
+			System.out.println("doing anding...");
 			andDocDetails=findAndOfDocDetails(queryWords);
+			System.out.println("done anding ...");
+			int resultIndex=0,resultsCount=0; boolean canDesplay=false;
 			
-			int resultIndex=0; boolean canDesplay=false;
-			for(int index=andDocDetails.size()-1;index>=0;index--){
-				if(andDocDetails.get(index).size() >= ParsingConstants.MIN_RESULTSET ){
-					resultIndex=index;
-					canDesplay=true;
-				}
+			
+			for(int index=andDocDetails.size()-1;index>=1;index--){
+				if(shownResults.size() >= ParsingConstants.MIN_RESULTSET)
+					break;
+				displayResults(queryWords,andDocDetails.get(index),index+1,shownResults);
+				
 			}
-			if(canDesplay){
+			int remainig = ParsingConstants.MIN_RESULTSET-shownResults.size();
+			
+			
+			int numberOfWords=queryWords.size();
+			int resultCount;
+			
+			for( int index=0;shownResults.size() < ParsingConstants.MIN_RESULTSET
+					&&index<queryWords.size(); index++){
+				remainig = ParsingConstants.MIN_RESULTSET-shownResults.size();
+				resultCount=index==queryWords.size()-1? remainig:(remainig/2);
+				displayTitleByTf(queryWords.get(index),resultCount,shownResults);
+				numberOfWords--;
+			}
+			//if()
+			/*if(canDesplay){
 				displayResults(queryWords,andDocDetails.get(resultIndex),resultIndex);
 				
 			}else{
 				
-			}
+			}*/
+			System.out.println(System.currentTimeMillis()-start+ "ms");
 		}
 		
 		//System.out.print( System.currentTimeMillis() - start  +" Exit");
 	}
 	
+	private static void displayTitleByTf(QueryWord queryWord,int numberResults,Set<String> shownResults) throws IOException{
+		List<String> docIds=new ArrayList<>();
+		queryWord.sortDocDetailsByTf();
+		String docId=null;
+		for(int index=0; numberResults > 0 && index < queryWord.getDocDetails().size() ;index++){
+			docId=queryWord.getDocDetails().get(index).getDocId();
+			if(shownResults.contains(docId))
+				continue;
+			docIds.add(docId);
+			shownResults.add(docId);
+			numberResults--;
+		}
+		displayTitles(docIds);
+	}
+	
 	private static void displayResults(List<QueryWord> queryWords,
-			List<DocDetails> relevantDocs, int depthIndex) throws IOException{
+			List<DocDetails> relevantDocs, int depthIndex, Set<String> shownResults) throws IOException{
 		List<Double> idfs=new ArrayList<>();
 		List<Double> tfs=new ArrayList<>();
 		Map<Double,List<String>> cosAngle=new TreeMap<>(Collections.reverseOrder()); 
@@ -177,6 +225,10 @@ public class Search {
 		List<String> docIds;
 		double distance=0d;
 		for(DocDetails docDetail:relevantDocs){
+			
+			if(shownResults.contains(docDetail.getDocId()))
+				continue;
+			
 			tfs=new ArrayList<>();
 			distance=0d;
 			matchedDocs=docDetail.getResultDocs();
@@ -199,27 +251,32 @@ public class Search {
 		int numOfResults=0,beginIndex,endIndex;
 		String title;
 		
+		List<String> showingDocIds=new ArrayList<>();
 		for(Double dist:cosAngle.keySet()){
 			for(String docId:cosAngle.get(dist)){
+				if(shownResults.size() >= ParsingConstants.MIN_RESULTSET)
+					break;
 				title=getTitle(docId);
 				if(title == null)
 					continue;
 				beginIndex=title.indexOf(ParsingConstants.wordDelimiter);
-				System.out.println(title.substring(beginIndex+1));
-				if(numOfResults++ == ParsingConstants.MIN_RESULTSET)
-					break;
+				//System.out.println(docId+"  "+ dist +"  " +title.substring(beginIndex+1));
+				showingDocIds.add(docId);
+				shownResults.add(docId);	
+				
 			}
+			if(shownResults.size() >= ParsingConstants.MIN_RESULTSET)
+				break;
 		}
+		displayTitles(showingDocIds);
 	}
 	private static void displayTitles(List<String> docIds) throws IOException{
 		String title;
-		int beginIndex;
 		for(String docId:docIds){
 			title=getTitle(docId);
 			if(title == null)
 				continue;
-			beginIndex=title.indexOf(ParsingConstants.wordDelimiter);
-			System.out.println(title.substring(beginIndex+1));
+			System.out.println(title);
 		}
 	}
 	private static List<Double> getUnitVector(List<Double> idfs,List<Double> tfs){
@@ -236,11 +293,12 @@ public class Search {
 		}
 		return unitVector;
 	}
-	public static void getPostingList(List<QueryWord> queryWords){
+	public static List<QueryWord> getPostingList(List<QueryWord> queryWords){
 		try {
 			int beginIndex,endIndex;
 			double idf;
 			String postingList=null;
+			List<QueryWord> validWords=new ArrayList<>();
 			for( QueryWord queryWord: queryWords){
 				
 				if( (postingList = getPostingList(queryWord.getWord())) != null){
@@ -249,16 +307,15 @@ public class Search {
 					endIndex=postingList.indexOf(ParsingConstants.CHAR_WORD_DELIMITER);
 					idf=Double.parseDouble(postingList.substring(beginIndex+1, endIndex));
 					queryWord.setIdf(idf);
-					continue;
-				}else{
-					queryWords.remove(queryWord);
+					validWords.add(queryWord);
 				}
 			}
-			
+			queryWords=validWords;
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return queryWords;
 	}
 	
 	private static String getPostingList(String word) throws IOException{
@@ -306,7 +363,6 @@ public class Search {
 		if(word == null || word.length() == 0)
 			return null;
 		Integer docId=Integer.parseInt(word);
-		int filePrefix=ParsingConstants.TITLES_FILE_PREFIX;
 		Entry<Integer,Long> entry = titleSec.floorEntry(docId);
 		if(entry == null)
 			return null;
@@ -333,7 +389,19 @@ public class Search {
 			return null;
 		}else{
 			titleIndex.seek(offset);
-			return titleIndex.readLine();
+			String title=null;
+			int start,id;
+			while( (title=titleIndex.readLine()) != null){
+				  start=title.indexOf(ParsingConstants.WORD_IDF_DELIMITER);
+				  if(start < 1)
+					  continue;
+				  id=Integer.parseInt(title.substring(0, start));
+				  if(id == docId)
+					  return title.substring(start+1);
+				  else if(id > docId)
+					  return null;
+			}
+			return null;
 		}
 	}
 	
@@ -419,6 +487,6 @@ public class Search {
 		     result.append(docId +",");	
 		}
 		result.delete(result.length() - 1 , result.length() );
-		System.out.println(result);
+		//System.out.println(result);
 	}
 }

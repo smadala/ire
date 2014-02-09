@@ -21,7 +21,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.PostConstruct;
 
 import com.ire.sort.ExternalSort;
 
@@ -29,11 +28,13 @@ public class PageParser {
 	
 	public static int totalNumberOfDoc=0;
 	
+	public static double maxWeight=0;
+	
 	private static Map<String,StringBuilder> allWords=new TreeMap<String,StringBuilder>();
 	public static Set<String> stopWords;
 	private Stemmer stemmer=new Stemmer();
 	public static enum Fields{
-		TITLE('t',100,4), INFOBOX('i',5,3), LINKS('l',5,2), CATAGORY('c',10,1), BODY('b',1,0);
+		TITLE('t',10000,4), INFOBOX('i',20,3), LINKS('l',10,2), CATAGORY('c',50,1), BODY('b',1,0);
 		private char shortForm;
 		private int weight;
 		private int setbit;
@@ -65,6 +66,9 @@ public class PageParser {
 	
 	public void parse(WikiPage page) throws IOException{
 		
+		if(page.getTitle().indexOf("Wikipedia:") == 0 || page.getTitle().indexOf("File:") == 0){
+			return;
+		}
 		totalNumberOfDoc++;
 		page.setId(String.valueOf(totalNumberOfDoc));
 		Map<String,Integer[]> wordCount=new HashMap<String, Integer[]>(256);
@@ -89,8 +93,22 @@ public class PageParser {
 		
 		aux=page.getCategory().toString().toLowerCase();
 		parseText(aux,wordCount, Fields.CATAGORY);
-		
 		insertToAllWords(page, wordCount);
+		/*maxWeight=maxFreq(wordCount);
+		
+		maxWeight=0;*/
+	}
+	private int maxFreq(Map<String,Integer[]> freq){
+		Iterator<Map.Entry<String, Integer[]>> it=freq.entrySet().iterator();
+		int max=0;
+		int weight=0;
+		while(it.hasNext()){
+			Entry<String,Integer[]> en=it.next();
+			weight = getWeight(en.getValue());
+			if(weight > max)
+				max=weight;
+		}
+		return max;
 	}
 	
 	public void insertToAllWords(WikiPage page, Map<String,Integer[]> wordCount) throws IOException{
@@ -204,6 +222,7 @@ public class PageParser {
 		//String []tokens = text.split("[0-9&|\\]\\[{}\\s=><\\-!();\'\"\\*#$\\,\\\\/]");
 		String []tokens = text.split(ParsingConstants.DOC_PARSIGN_REGEX);
 		Integer[] count;
+		int freq;
 		for(String token:tokens){
 			
 			if(token.isEmpty()){
@@ -479,12 +498,25 @@ public class PageParser {
 		return valueString;
 	}
 	
+private int getWeight(Integer[] values){
+		
+		int weight=0;
+		for(Fields field:Fields.values()){
+			if(values[field.ordinal()] == 0)
+				continue;
+			weight = weight + (values[field.ordinal()].intValue() * field.getWeight());
+			//valueString.append(field.getShortForm());
+		}
+		return weight;
+	}
+	
 	private String termFrequence(int weight){
 		double result=0;
 		if(weight == 0)
 			return "0";
 		else{
 			result= 1 + Math.log10(weight);
+			//result= weight/maxWeight;
 		}
 		return ParsingConstants.decimalFormat.format(result);
 	}

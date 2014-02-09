@@ -55,7 +55,7 @@ public class ParsingConstants {
 	public static final String SECONDRY_SUFFIX="_secondry.txt";
 	public static final String INDEX_SUFFIX="_index.txt";
 	
-	public static final int SECONDRY_INDEX_GAP=50;
+	public static final int SECONDRY_INDEX_GAP=20;
 	
 	
 	public static final int TITLES_FILE_PREFIX=26;
