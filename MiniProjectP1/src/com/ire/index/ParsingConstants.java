@@ -36,7 +36,7 @@ public class ParsingConstants {
 	public static final String OFFSETS_FILE="offsets.txt";
 	public static int pageNumber=0;
 	public static int NumOfPagesInMap=0;
-	public static final int NUM_OF_PAGES_PER_CHUNK=15000;
+	public static final int NUM_OF_PAGES_PER_CHUNK=5000;
 	
 	public static final int MAX_MERGE_LINE_LENGTH=100000;
 	

@@ -132,14 +132,14 @@ public class Search {
 					queryWords.add(queryWord);
 				}
 			}
-			System.out.println("getting posting list...");
+//			System.out.println("getting posting list...");
 			queryWords=getPostingList(queryWords);
-			System.out.println("got posting list...");
+	//		System.out.println("got posting list...");
 			for(QueryWord qWord:queryWords){
 				qWord.makeDocDetails();
 			}
 			
-			Set<String> shownResults=new HashSet<>(); //to avoid duplicates
+			Set<Integer> shownResults=new HashSet<>(); //to avoid duplicates
 			
 			if(queryWords.size() == 1){
 				/*List<String> docIds=new ArrayList<>();
@@ -157,12 +157,13 @@ public class Search {
 			Collections.sort(queryWords, QueryWord.SORT_BY_IDF);
 			
 			List<List<DocDetails>> andDocDetails;
-			System.out.println("doing anding...");
+		//	System.out.println("doing anding...");
 			andDocDetails=findAndOfDocDetails(queryWords);
-			System.out.println("done anding ...");
+		//	System.out.println("done anding ...");
 			int resultIndex=0,resultsCount=0; boolean canDesplay=false;
 			
-			
+//			t:life t:of t:pi c:movie i:irrfan
+	
 			for(int index=andDocDetails.size()-1;index>=1;index--){
 				if(shownResults.size() >= ParsingConstants.MIN_RESULTSET)
 					break;
@@ -178,7 +179,7 @@ public class Search {
 			for( int index=0;shownResults.size() < ParsingConstants.MIN_RESULTSET
 					&&index<queryWords.size(); index++){
 				remainig = ParsingConstants.MIN_RESULTSET-shownResults.size();
-				resultCount=index==queryWords.size()-1? remainig:(remainig/2);
+				resultCount=index==queryWords.size()-1? remainig:(remainig/2+1);
 				displayTitleByTf(queryWords.get(index),resultCount,shownResults);
 				numberOfWords--;
 			}
@@ -189,16 +190,18 @@ public class Search {
 			}else{
 				
 			}*/
+			//t:life t:of t:pi c:movie i:irrfan
+
 			System.out.println(System.currentTimeMillis()-start+ "ms");
 		}
 		
 		//System.out.print( System.currentTimeMillis() - start  +" Exit");
 	}
 	
-	private static void displayTitleByTf(QueryWord queryWord,int numberResults,Set<String> shownResults) throws IOException{
-		List<String> docIds=new ArrayList<>();
+	private static void displayTitleByTf(QueryWord queryWord,int numberResults,Set<Integer> shownResults) throws IOException{
+		List<Integer> docIds=new ArrayList<>();
 		queryWord.sortDocDetailsByTf();
-		String docId=null;
+		Integer docId=null;
 		for(int index=0; numberResults > 0 && index < queryWord.getDocDetails().size() ;index++){
 			docId=queryWord.getDocDetails().get(index).getDocId();
 			if(shownResults.contains(docId))
@@ -211,18 +214,19 @@ public class Search {
 	}
 	
 	private static void displayResults(List<QueryWord> queryWords,
-			List<DocDetails> relevantDocs, int depthIndex, Set<String> shownResults) throws IOException{
-		List<Double> idfs=new ArrayList<>();
+			List<DocDetails> relevantDocs, int depthIndex, Set<Integer> shownResults) throws IOException{
+		//List<Double> idfs=new ArrayList<>();
 		List<Double> tfs=new ArrayList<>();
-		Map<Double,List<String>> cosAngle=new TreeMap<>(Collections.reverseOrder()); 
-		for(int i=0;i<depthIndex;i++){
+		Map<Double,List<Integer>> cosAngle=new TreeMap<>(Collections.reverseOrder()); 
+		/*for(int i=0;i<depthIndex;i++){
 			tfs.add(1d);
 			idfs.add(queryWords.get(i).getIdf());
 		}
+		
+		List<Double> queryUnitVector=getUnitVector(idfs, tfs);*/
 		List<DocDetails> matchedDocs;
-		List<Double> queryUnitVector=getUnitVector(idfs, tfs);
 		List<Double> docUnitVector;
-		List<String> docIds;
+		List<Integer> docIds;
 		double distance=0d;
 		for(DocDetails docDetail:relevantDocs){
 			
@@ -233,13 +237,14 @@ public class Search {
 			distance=0d;
 			matchedDocs=docDetail.getResultDocs();
 			for( int i=0;i<depthIndex;i++){
-				tfs.add(matchedDocs.get(i).getTf());
+				//tfs.add(matchedDocs.get(i).getTf());
+				distance+=matchedDocs.get(i).getTf();
 			}
-			docUnitVector=getUnitVector(idfs, tfs);
+			/*docUnitVector=getUnitVector(idfs, tfs);
 			
 			for(int i=0;i<depthIndex;i++){
 				distance+=docUnitVector.get(i)*queryUnitVector.get(i);
-			}
+			}*/
 			docIds = cosAngle.get(distance);
 			if(docIds == null){
 				docIds=new ArrayList<>();
@@ -251,9 +256,9 @@ public class Search {
 		int numOfResults=0,beginIndex,endIndex;
 		String title;
 		
-		List<String> showingDocIds=new ArrayList<>();
+		List<Integer> showingDocIds=new ArrayList<>();
 		for(Double dist:cosAngle.keySet()){
-			for(String docId:cosAngle.get(dist)){
+			for(Integer docId:cosAngle.get(dist)){
 				if(shownResults.size() >= ParsingConstants.MIN_RESULTSET)
 					break;
 				title=getTitle(docId);
@@ -270,9 +275,9 @@ public class Search {
 		}
 		displayTitles(showingDocIds);
 	}
-	private static void displayTitles(List<String> docIds) throws IOException{
+	private static void displayTitles(List<Integer> docIds) throws IOException{
 		String title;
-		for(String docId:docIds){
+		for(Integer docId:docIds){
 			title=getTitle(docId);
 			if(title == null)
 				continue;
@@ -322,8 +327,8 @@ public class Search {
 		if(word == null || word.length() == 0)
 			return null;
 		int filePrefix=word.charAt(0) - 'a';
-		if(filePrefix < 0){
-			filePrefix=ParsingConstants.TITLES_FILE_PREFIX;
+		if(filePrefix < 0 ||filePrefix > 26 ){
+			return null;
 		}
 		TreeMap<String,Long> secIndex=secIndexes.get(filePrefix);
 		Entry<String,Long> entry = secIndex.floorEntry(word);
@@ -358,11 +363,11 @@ public class Search {
 		}
 	}
 	
-	private static String getTitle(String word) throws IOException{
+	private static String getTitle(Integer word) throws IOException{
 		
-		if(word == null || word.length() == 0)
+		if(word == null )
 			return null;
-		Integer docId=Integer.parseInt(word);
+		Integer docId=word;
 		Entry<Integer,Long> entry = titleSec.floorEntry(docId);
 		if(entry == null)
 			return null;

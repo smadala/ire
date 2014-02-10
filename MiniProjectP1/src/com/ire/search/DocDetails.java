@@ -7,7 +7,7 @@ import com.ire.index.PageParser.Fields;
 import com.ire.index.ParsingConstants;
 
 public class DocDetails {
-	private String docId;
+	private Integer docId;
 	private int fieldType;
 	private double tf;
 	private List<DocDetails> resultDocs;
@@ -20,7 +20,7 @@ public class DocDetails {
 		//word#idf=docid-freq:weight;
 		 int startIndex,endIndex;
 		 startIndex= details.indexOf(ParsingConstants.CHAR_DOC_COUNT_DELIMITER);
-		 docId=details.substring(0, startIndex);
+		 docId=Integer.parseInt(details.substring(0, startIndex));
 		 
 		 endIndex=details.indexOf(ParsingConstants.CHAR_WEIGHT_DELIMITER, startIndex);
 		 fieldType= Integer.parseInt(details.substring(startIndex+1, endIndex));
@@ -30,13 +30,14 @@ public class DocDetails {
 		 resultDocs=new ArrayList<>();
 		 resultDocs.add(this);
 	}
-	public String getDocId() {
+	
+	
+	public Integer getDocId() {
 		return docId;
 	}
-	public void setDocId(String docId) {
+	public void setDocId(Integer docId) {
 		this.docId = docId;
 	}
-	
 	public int getFieldType() {
 		return fieldType;
 	}
@@ -75,13 +76,14 @@ public class DocDetails {
 		int len1=l1.size(),len2=l2.size(),diff,docId1,docId2;
 		
 		for(int i=0,j=0;i<len1 && j<len2; ){
-			diff=l1.get(i).getDocId().compareTo(l2.get(j).getDocId());
-			/*if(l1.get(i).getDocId().equals("38833")){
+			//diff=l1.get(i).getDocId().compareTo(l2.get(j).getDocId());
+			/*if(l1.get(i).getDocId()== 38539){
 				System.out.print(l1.get(i));
 			}*/
-			/*docId1=Integer.parseInt(l1.get(i).getDocId());
-			docId2=Integer.parseInt(l2.get(j).getDocId());
-			diff=docId1-docId2;*/
+			
+			docId1=l1.get(i).getDocId();
+			docId2=l2.get(j).getDocId();
+			diff=docId1-docId2;
 			if(diff > 0)
 				j++;
 			else if(diff < 0)
